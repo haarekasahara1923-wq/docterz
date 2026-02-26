@@ -1,0 +1,626 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// ─── ENUM TYPES ─────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  CLINIC_ADMIN
+  STAFF
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_QUEUE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CARD
+  ONLINE
+  INSURANCE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  FAILED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+}
+
+enum ReferralStatus {
+  PENDING
+  SENT
+  COMPLETED
+  CANCELLED
+}
+
+enum CommissionStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum FollowupStatus {
+  PENDING
+  SENT
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  LOGIN
+  LOGOUT
+  EXPORT
+  SHARE
+}
+
+// ─── TENANT (CLINIC) ─────────────────────────────────────────────────────────
+
+model Tenant {
+  id              String   @id @default(cuid())
+  clinicName      String
+  slug            String   @unique
+  logo            String?
+  doctorName      String
+  doctorSignature String?
+  themeColor      String   @default("#0d9488")
+  opdTimings      Json?    // { mon: { open: "09:00", close: "18:00" }, ... }
+  consultationFee Decimal  @default(0) @db.Decimal(10, 2)
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  phone           String?
+  email           String?
+  website         String?
+  gstin           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  users            User[]
+  patients         Patient[]
+  appointments     Appointment[]
+  prescriptions    Prescription[]
+  payments         Payment[]
+  expenses         Expense[]
+  employees        Employee[]
+  laboratories     Laboratory[]
+  labReferrals     LabReferral[]
+  commissions      LabCommissionRecord[]
+  subscriptions    Subscription[]
+  chatMessages     ChatMessage[]
+  followups        Followup[]
+  queueTokens      QueueToken[]
+  auditLogs        AuditLog[]
+  visitNotes       VisitNote[]
+  shareLinks       ShareLink[]
+
+  @@index([slug])
+  @@map("tenants")
+}
+
+// ─── USER ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  name         String
+  role         UserRole  @default(STAFF)
+  avatar       String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  otpHash      String?
+  otpExpiresAt DateTime?
+  refreshToken String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  tenant            Tenant?       @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  prescriptions     Prescription[]
+  auditLogs         AuditLog[]
+  patientAuditLogs  PatientAuditLog[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+// ─── PATIENT ─────────────────────────────────────────────────────────────────
+
+model Patient {
+  id               String      @id @default(cuid())
+  tenantId         String
+  patientCode      String      // Unique per tenant
+  fullName         String
+  phone            String
+  email            String?
+  age              Int?
+  dateOfBirth      DateTime?
+  gender           Gender?
+  address          String?
+  city             String?
+  bloodGroup       BloodGroup?
+  allergies        String[]
+  chronicDiseases  String[]
+  emergencyContact Json?       // { name, phone, relation }
+  notes            String?
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  // Relations
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
+  prescriptions Prescription[]
+  payments      Payment[]
+  labReferrals  LabReferral[]
+  followups     Followup[]
+  visitNotes    VisitNote[]
+  auditLogs     PatientAuditLog[]
+  shareLinks    ShareLink[]
+
+  @@unique([tenantId, patientCode])
+  @@index([tenantId])
+  @@index([tenantId, fullName])
+  @@index([tenantId, phone])
+  @@map("patients")
+}
+
+// ─── PATIENT AUDIT LOG ───────────────────────────────────────────────────────
+
+model PatientAuditLog {
+  id        String      @id @default(cuid())
+  tenantId  String
+  patientId String
+  userId    String
+  action    AuditAction
+  field     String?
+  oldValue  String?
+  newValue  String?
+  ipAddress String?
+  createdAt DateTime    @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@map("patient_audit_logs")
+}
+
+// ─── APPOINTMENT & QUEUE ─────────────────────────────────────────────────────
+
+model Appointment {
+  id              String            @id @default(cuid())
+  tenantId        String
+  patientId       String
+  appointmentDate DateTime
+  slotTime        String?
+  status          AppointmentStatus @default(SCHEDULED)
+  type            String            @default("OPD") // OPD, FOLLOW_UP, EMERGENCY
+  reason          String?
+  notes           String?
+  fee             Decimal?          @db.Decimal(10, 2)
+  noShowRisk      Float?            // AI prediction 0-1
+  whatsappSent    Boolean           @default(false)
+  smsSent         Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  queueToken  QueueToken?
+  prescription Prescription?
+  payment     Payment?
+  followups   Followup[]
+
+  @@index([tenantId])
+  @@index([tenantId, appointmentDate])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+// ─── QUEUE TOKEN ─────────────────────────────────────────────────────────────
+
+model QueueToken {
+  id            String   @id @default(cuid())
+  tenantId      String
+  appointmentId String   @unique
+  tokenNumber   Int
+  queueDate     DateTime
+  estimatedTime DateTime?
+  calledAt      DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, queueDate])
+  @@map("queue_tokens")
+}
+
+// ─── PRESCRIPTION ─────────────────────────────────────────────────────────────
+
+model Prescription {
+  id            String   @id @default(cuid())
+  tenantId      String
+  patientId     String
+  appointmentId String?  @unique
+  doctorId      String
+  diagnosis     String?
+  symptoms      String[]
+  medicines     Json     // [{ name, dose, frequency, duration, instructions }]
+  labTests      String[]
+  advice        String?
+  followUpDate  DateTime?
+  digitalSig    String?
+  pdfUrl        String?
+  isVoiceRx     Boolean  @default(false)
+  voiceNotes    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  doctor      User         @relation(fields: [doctorId], references: [id])
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@map("prescriptions")
+}
+
+// ─── VISIT NOTE ───────────────────────────────────────────────────────────────
+
+model VisitNote {
+  id        String   @id @default(cuid())
+  tenantId  String
+  patientId String
+  note      String
+  type      String   @default("GENERAL") // GENERAL, FOLLOWUP, EMERGENCY
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@map("visit_notes")
+}
+
+// ─── PAYMENT ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id            String        @id @default(cuid())
+  tenantId      String
+  patientId     String
+  appointmentId String?       @unique
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentMode   PaymentMode   @default(CASH)
+  status        PaymentStatus @default(PENDING)
+  service       String        @default("CONSULTATION")
+  receiptNumber String?
+  discount      Decimal?      @db.Decimal(10, 2)
+  notes         String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, paidAt])
+  @@map("payments")
+}
+
+// ─── EXPENSE ─────────────────────────────────────────────────────────────────
+
+model Expense {
+  id          String   @id @default(cuid())
+  tenantId    String
+  category    String   // SALARY, RENT, SUPPLIES, EQUIPMENT, etc.
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  date        DateTime
+  receipt     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@map("expenses")
+}
+
+// ─── EMPLOYEE ─────────────────────────────────────────────────────────────────
+
+model Employee {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  role         String   // RECEPTIONIST, NURSE, TECHNICIAN, etc.
+  phone        String
+  email        String?
+  salary       Decimal? @db.Decimal(10, 2)
+  joinDate     DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("employees")
+}
+
+// ─── LABORATORY ───────────────────────────────────────────────────────────────
+
+model Laboratory {
+  id              String   @id @default(cuid())
+  tenantId        String
+  labName         String
+  contactPerson   String?
+  email           String?
+  phone           String
+  address         String?
+  city            String?
+  commissionPct   Decimal  @default(0) @db.Decimal(5, 2)
+  notes           String?
+  isActive        Boolean  @default(true)
+  totalReferrals  Int      @default(0)
+  totalCommission Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  referrals   LabReferral[]
+  commissions LabCommissionRecord[]
+
+  @@index([tenantId])
+  @@index([tenantId, labName])
+  @@map("laboratories")
+}
+
+// ─── LAB REFERRAL ─────────────────────────────────────────────────────────────
+
+model LabReferral {
+  id           String         @id @default(cuid())
+  tenantId     String
+  patientId    String
+  laboratoryId String
+  referralId   String         @unique // Auto-generated reference
+  tests        String[]
+  notes        String?
+  status       ReferralStatus @default(PENDING)
+  emailSent    Boolean        @default(false)
+  emailSentAt  DateTime?
+  completedAt  DateTime?
+  reportUrl    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  laboratory Laboratory @relation(fields: [laboratoryId], references: [id], onDelete: Cascade)
+  commission LabCommissionRecord?
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@index([laboratoryId])
+  @@map("lab_referrals")
+}
+
+// ─── LAB COMMISSION RECORD ───────────────────────────────────────────────────
+
+model LabCommissionRecord {
+  id           String           @id @default(cuid())
+  tenantId     String
+  laboratoryId String
+  referralId   String           @unique
+  amount       Decimal          @db.Decimal(10, 2)
+  percentage   Decimal          @db.Decimal(5, 2)
+  status       CommissionStatus @default(PENDING)
+  paidAt       DateTime?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  laboratory Laboratory  @relation(fields: [laboratoryId], references: [id], onDelete: Cascade)
+  referral   LabReferral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([laboratoryId])
+  @@map("lab_commission_records")
+}
+
+// ─── SUBSCRIPTION ─────────────────────────────────────────────────────────────
+
+model Subscription {
+  id              String             @id @default(cuid())
+  tenantId        String
+  plan            SubscriptionPlan   @default(TRIAL)
+  status          SubscriptionStatus @default(TRIAL)
+  startDate       DateTime           @default(now())
+  endDate         DateTime
+  trialEndsAt     DateTime?
+  razorpaySubId   String?
+  razorpayOrderId String?
+  amount          Decimal            @db.Decimal(10, 2)
+  isYearly        Boolean            @default(false)
+  gracePeriodEnd  DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("subscriptions")
+}
+
+// ─── PLAN FEATURES ───────────────────────────────────────────────────────────
+
+model PlanFeature {
+  id              String           @id @default(cuid())
+  plan            SubscriptionPlan
+  featureName     String
+  featureKey      String
+  isEnabled       Boolean          @default(true)
+  limit           Int?             // null = unlimited
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([plan, featureKey])
+  @@map("plan_features")
+}
+
+// ─── FOLLOWUP ─────────────────────────────────────────────────────────────────
+
+model Followup {
+  id            String         @id @default(cuid())
+  tenantId      String
+  patientId     String
+  appointmentId String?
+  scheduledFor  DateTime
+  message       String?
+  type          String         @default("SMS") // SMS, WHATSAPP, EMAIL
+  status        FollowupStatus @default(PENDING)
+  sentAt        DateTime?
+  aiGenerated   Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@index([scheduledFor])
+  @@map("followups")
+}
+
+// ─── CHAT MESSAGE ─────────────────────────────────────────────────────────────
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  from      String   // Phone number or system
+  to        String
+  message   String
+  type      String   @default("INBOUND") // INBOUND, OUTBOUND
+  channel   String   @default("WHATSAPP") // WHATSAPP, SMS
+  intent    String?  // AI detected intent
+  status    String   @default("SENT")
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("chat_messages")
+}
+
+// ─── SHARE LINK ───────────────────────────────────────────────────────────────
+
+model ShareLink {
+  id         String    @id @default(cuid())
+  tenantId   String
+  patientId  String
+  token      String    @unique
+  expiresAt  DateTime
+  accessedAt DateTime?
+  isRevoked  Boolean   @default(false)
+  type       String    @default("PROFILE") // PROFILE, VISIT
+  createdAt  DateTime  @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("share_links")
+}
+
+// ─── AUDIT LOG ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  tenantId   String?
+  userId     String?
+  action     AuditAction
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
