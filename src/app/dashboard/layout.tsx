@@ -9,11 +9,11 @@ const navItems = [
   { href: '/dashboard/patients', label: 'Patients', icon: '👥', id: 'nav-patients' },
   { href: '/dashboard/appointments', label: 'Appointments', icon: '📅', id: 'nav-appointments' },
   { href: '/dashboard/queue', label: 'Live Queue', icon: '🏥', id: 'nav-queue', badge: '' },
-  { href: '/dashboard/prescription', label: 'VoiceRx', icon: '💊', id: 'nav-rx' },
-  { href: '/dashboard/labs', label: 'Lab Referrals', icon: '🧪', id: 'nav-labs' },
-  { href: '/dashboard/revenue', label: 'Revenue', icon: '💰', id: 'nav-revenue' },
-  { href: '/dashboard/followups', label: 'Follow-ups', icon: '🔔', id: 'nav-followups' },
-  { href: '/dashboard/staff', label: 'Staff', icon: '👤', id: 'nav-staff' },
+  { href: '/dashboard/prescription', label: 'VoiceRx', icon: '💊', id: 'nav-rx', minPlan: 'PRO' },
+  { href: '/dashboard/labs', label: 'Lab Referrals', icon: '🧪', id: 'nav-labs', minPlan: 'PRO' },
+  { href: '/dashboard/revenue', label: 'Revenue', icon: '💰', id: 'nav-revenue', minPlan: 'PRO' },
+  { href: '/dashboard/followups', label: 'Follow-ups', icon: '🔔', id: 'nav-followups', minPlan: 'PRO' },
+  { href: '/dashboard/staff', label: 'Staff', icon: '👤', id: 'nav-staff', minPlan: 'ENTERPRISE' },
   { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', id: 'nav-settings' },
 ]
 
@@ -21,9 +21,18 @@ const bottomNavItems = [
   { href: '/dashboard', label: 'Home', icon: '🏠', id: 'bottom-home' },
   { href: '/dashboard/patients', label: 'Patients', icon: '👥', id: 'bottom-patients' },
   { href: '/dashboard/queue', label: 'Queue', icon: '🏥', id: 'bottom-queue' },
-  { href: '/dashboard/prescription', label: 'VoiceRx', icon: '💊', id: 'bottom-rx' },
-  { href: '/dashboard/revenue', label: 'Revenue', icon: '💰', id: 'bottom-revenue' },
+  { href: '/dashboard/prescription', label: 'VoiceRx', icon: '💊', id: 'bottom-rx', minPlan: 'PRO' },
+  { href: '/dashboard/revenue', label: 'Revenue', icon: '💰', id: 'bottom-revenue', minPlan: 'PRO' },
 ]
+
+// Helper to check if a plan meets the minimum requirement
+function hasAccess(userPlan: string, minPlan?: string) {
+  if (!minPlan) return true;
+  const plans = ['BASIC', 'PRO', 'ENTERPRISE'];
+  const userIdx = plans.indexOf((userPlan || 'BASIC').toUpperCase());
+  const minIdx = plans.indexOf(minPlan.toUpperCase());
+  return userIdx >= minIdx;
+}
 
 export default function DashboardLayout({
   children,
@@ -100,23 +109,41 @@ export default function DashboardLayout({
         <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href
+            const allowed = user ? hasAccess(user.plan, item.minPlan) : true;
+
             return (
               <Link
                 key={item.id}
-                href={item.href}
+                href={allowed ? item.href : '/dashboard/settings'}
                 id={item.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${isActive
+                onClick={(e) => {
+                  if (!allowed) {
+                    alert(`This feature requires the ${item.minPlan} plan. Please upgrade in Settings.`);
+                  }
+                }}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${!allowed
+                  ? 'opacity-60 cursor-not-allowed text-slate-500'
+                  : isActive
                     ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                   }`}
               >
                 <span className="text-base w-5 text-center">{item.icon}</span>
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="bg-teal-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">{item.badge}</span>
-                )}
-                {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+
+                {!allowed ? (
+                  <span title={`Requires ${item.minPlan} plan`} className="text-amber-500 text-xs bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1 border border-amber-500/20">
+                    🔒 <span className="text-[9px] font-bold uppercase">{item.minPlan}</span>
+                  </span>
+                ) : (
+                  <>
+                    {item.badge && (
+                      <span className="bg-teal-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">{item.badge}</span>
+                    )}
+                    {isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                    )}
+                  </>
                 )}
               </Link>
             )
@@ -161,18 +188,32 @@ export default function DashboardLayout({
             <nav className="flex-1 px-3 py-3 space-y-0.5">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
+                const allowed = user ? hasAccess(user.plan, item.minPlan) : true;
+
                 return (
                   <Link
                     key={item.id}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${isActive
+                    href={allowed ? item.href : '/dashboard/settings'}
+                    onClick={() => {
+                      if (!allowed) {
+                        alert(`This feature requires the ${item.minPlan} plan. Please upgrade in Settings.`);
+                      }
+                      setSidebarOpen(false)
+                    }}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${!allowed
+                      ? 'opacity-60 cursor-not-allowed text-slate-500'
+                      : isActive
                         ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
                       }`}
                   >
                     <span className="text-lg">{item.icon}</span>
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {!allowed && (
+                      <span title={`Requires ${item.minPlan} plan`} className="text-amber-500 text-xs bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1 border border-amber-500/20">
+                        🔒 <span className="text-[9px] font-bold uppercase">{item.minPlan}</span>
+                      </span>
+                    )}
                   </Link>
                 )
               })}
@@ -243,16 +284,28 @@ export default function DashboardLayout({
         <div className="flex items-center justify-around px-2 py-2">
           {bottomNavItems.map((item) => {
             const isActive = pathname === item.href
+            const allowed = user ? hasAccess(user.plan, item.minPlan) : true;
+
             return (
               <Link
                 key={item.id}
-                href={item.href}
+                href={allowed ? item.href : '/dashboard/settings'}
                 id={item.id}
-                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[56px] ${isActive
+                onClick={(e) => {
+                  if (!allowed) {
+                    alert(`This feature requires the ${item.minPlan} plan. Please upgrade.`);
+                  }
+                }}
+                className={`Relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[56px] ${!allowed
+                  ? 'opacity-50 grayscale text-slate-400'
+                  : isActive
                     ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                   }`}
               >
+                {!allowed && (
+                  <span className="absolute top-1 right-2 text-[10px] drop-shadow-md z-10">🔒</span>
+                )}
                 <span className="text-xl leading-none">{item.icon}</span>
                 <span className="text-xs font-medium">{item.label}</span>
               </Link>
