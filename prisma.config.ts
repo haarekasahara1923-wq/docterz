@@ -1,15 +1,14 @@
 import 'dotenv/config'
-import { defineConfig, env } from 'prisma/config'
+import { defineConfig } from 'prisma/config'
 
-// prisma.config.ts — Neon + Prisma 7 official format
-// ref: https://neon.com/docs/guides/prisma
+// prisma.config.ts — Prisma 7 + Neon PostgreSQL
+// DATABASE_URL = pooled connection (runtime / Vercel serverless)
+// DIRECT_URL   = direct connection (migrations only — optional on Vercel)
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
-
-  // datasource.url used by CLI (db push, migrate, studio)
-  // ALWAYS use DIRECT_URL here (not pooled) to avoid PgBouncer issues
   datasource: {
-    url: env('DIRECT_URL'),
+    // Use DIRECT_URL for migrations if available, otherwise fall back to DATABASE_URL
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL || '',
   },
 })
