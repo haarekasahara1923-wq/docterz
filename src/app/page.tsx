@@ -53,66 +53,77 @@ export default function LandingPage() {
     },
   ]
 
-  const plans = [
-    {
-      name: 'Basic',
-      planKey: 'BASIC',
-      price: '₹999',
-      period: '/month',
-      desc: 'Perfect for solo practitioners',
-      features: [
-        'Up to 100 patients/month',
-        'Appointment scheduling',
-        'Basic prescriptions',
-        'Payment tracking',
-        'Email support',
-      ],
-      cta: 'Start Free Trial',
-      ctaLink: '/auth/register?plan=BASIC',
-      popular: false,
-      color: 'from-slate-600 to-slate-700',
-    },
-    {
-      name: 'Pro',
-      planKey: 'PRO',
-      price: '₹2,499',
-      period: '/month',
-      desc: 'For growing clinics',
-      features: [
-        'Unlimited patients',
-        'AI VoiceRx',
-        'Lab referral + commissions',
-        'WhatsApp integration',
-        'Revenue analytics',
-        'Follow-up automation',
-        'Priority support',
-      ],
-      cta: 'Start Free Trial',
-      ctaLink: '/auth/register?plan=PRO',
-      popular: true,
-      color: 'from-teal-500 to-emerald-600',
-    },
-    {
-      name: 'Enterprise',
-      planKey: 'ENTERPRISE',
-      price: '₹5,999',
-      period: '/month',
-      desc: 'Multi-doctor clinics & hospitals',
-      features: [
-        'Everything in Pro',
-        'Multi-doctor support',
-        'Custom branding',
-        'API access',
-        'Dedicated account manager',
-        'Custom integrations',
-        'SLA guarantee',
-      ],
-      cta: 'Contact Sales',
-      ctaLink: '/auth/register?plan=ENTERPRISE',
-      popular: false,
-      color: 'from-violet-600 to-purple-700',
-    },
-  ]
+  const plans: Array<{
+    name: string
+    planKey: string
+    price: string
+    period: string
+    desc: string
+    features: string[]
+    cta: string
+    ctaLink: string
+    popular: boolean
+    color: string
+  }> = [
+      {
+        name: 'Basic',
+        planKey: 'BASIC',
+        price: '₹999',
+        period: '/month',
+        desc: 'Perfect for solo practitioners',
+        features: [
+          'Up to 100 patients/month',
+          'Appointment scheduling',
+          'Basic prescriptions',
+          'Payment tracking',
+          'Email support',
+        ],
+        cta: 'Start Free Trial',
+        ctaLink: '/auth/register?plan=BASIC',
+        popular: false,
+        color: 'from-slate-600 to-slate-700',
+      },
+      {
+        name: 'Pro',
+        planKey: 'PRO',
+        price: '₹2,499',
+        period: '/month',
+        desc: 'For growing clinics',
+        features: [
+          'Unlimited patients',
+          'AI VoiceRx',
+          'Lab referral + commissions',
+          'WhatsApp integration',
+          'Revenue analytics',
+          'Follow-up automation',
+          'Priority support',
+        ],
+        cta: 'Start Free Trial',
+        ctaLink: '/auth/register?plan=PRO',
+        popular: true,
+        color: 'from-teal-500 to-emerald-600',
+      },
+      {
+        name: 'Enterprise',
+        planKey: 'ENTERPRISE',
+        price: '₹5,999',
+        period: '/month',
+        desc: 'Multi-doctor clinics & hospitals',
+        features: [
+          'Everything in Pro',
+          'Multi-doctor support',
+          'Custom branding',
+          'API access',
+          'Dedicated account manager',
+          'Custom integrations',
+          'SLA guarantee',
+        ],
+        cta: 'Contact Sales',
+        ctaLink: '/auth/register?plan=ENTERPRISE',
+        popular: false,
+        color: 'from-violet-600 to-purple-700',
+      },
+    ]
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -153,7 +164,7 @@ export default function LandingPage() {
                 Sign In
               </Link>
               <Link
-                href="/auth/register"
+                href="/auth/register?plan=PRO"
                 className="btn-primary text-sm px-5 py-2.5"
               >
                 Start Free Trial →
@@ -183,7 +194,7 @@ export default function LandingPage() {
             <a href="#pricing" className="block text-slate-300 hover:text-white py-2">Pricing</a>
             <a href="#demo" className="block text-slate-300 hover:text-white py-2">Demo</a>
             <Link href="/auth/login" className="block text-slate-300 hover:text-white py-2">Sign In</Link>
-            <Link href="/auth/register" className="btn-primary w-full text-center text-sm py-3 block">
+            <Link href="/auth/register?plan=PRO" className="btn-primary w-full text-center text-sm py-3 block">
               Start Free Trial →
             </Link>
           </div>
@@ -232,7 +243,7 @@ export default function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Link href="/auth/register" className="w-full sm:w-auto btn-primary text-base px-8 py-4 rounded-2xl">
+            <Link href="/auth/register?plan=PRO" className="w-full sm:w-auto btn-primary text-base px-8 py-4 rounded-2xl">
               🚀 Start 7-Day Free Trial
             </Link>
             <a href="#demo" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/10 text-white font-semibold hover:bg-white/5 transition-all text-base">
@@ -483,8 +494,8 @@ export default function LandingPage() {
             <div
               key={i}
               className={`relative rounded-2xl p-8 border transition-all duration-300 ${plan.popular
-                  ? 'border-teal-500/50 bg-gradient-to-b from-teal-900/30 to-emerald-900/20 scale-105'
-                  : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
+                ? 'border-teal-500/50 bg-gradient-to-b from-teal-900/30 to-emerald-900/20 scale-105'
+                : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
                 }`}
             >
               {plan.popular && (
@@ -516,10 +527,10 @@ export default function LandingPage() {
               </ul>
 
               <Link
-                href={(plan as any).ctaLink || '/auth/register'}
+                href={plan.ctaLink}
                 className={`w-full block text-center py-3 rounded-xl font-semibold transition-all ${plan.popular
-                    ? 'btn-primary'
-                    : 'border border-white/20 text-white hover:bg-white/5'
+                  ? 'btn-primary'
+                  : 'border border-white/20 text-white hover:bg-white/5'
                   }`}
               >
                 {plan.cta}
@@ -588,7 +599,7 @@ export default function LandingPage() {
                 Join 10,000+ Indian doctors already running their clinics on autopilot.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/auth/register" className="btn-primary px-8 py-4 text-base rounded-2xl">
+                <Link href="/auth/register?plan=PRO" className="btn-primary px-8 py-4 text-base rounded-2xl">
                   🚀 Start 7-Day Free Trial
                 </Link>
                 <a href="tel:+919999999999" className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/20 text-white font-semibold hover:bg-white/5 transition-all text-base">
