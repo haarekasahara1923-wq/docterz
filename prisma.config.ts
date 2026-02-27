@@ -1,22 +1,15 @@
-import { defineConfig } from 'prisma/config'
-import { PrismaNeon } from '@prisma/adapter-neon'
-import { Pool } from '@neondatabase/serverless'
-
-// Load .env in non-Next.js contexts (e.g. prisma CLI)
 import 'dotenv/config'
+import { defineConfig, env } from 'prisma/config'
+
+// prisma.config.ts — Neon + Prisma 7 official format
+// ref: https://neon.com/docs/guides/prisma
 
 export default defineConfig({
-  earlyAccess: true,
+  schema: 'prisma/schema.prisma',
 
-  schema: './prisma/schema.prisma',
-
-  migrate: {
-    // Direct URL used for migrations (bypasses PgBouncer pooler)
-    async adapter() {
-      const pool = new Pool({
-        connectionString: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
-      })
-      return new PrismaNeon(pool)
-    },
+  // datasource.url used by CLI (db push, migrate, studio)
+  // ALWAYS use DIRECT_URL here (not pooled) to avoid PgBouncer issues
+  datasource: {
+    url: env('DIRECT_URL'),
   },
 })

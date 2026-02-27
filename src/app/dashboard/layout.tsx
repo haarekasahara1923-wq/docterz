@@ -105,11 +105,10 @@ export default function DashboardLayout({
                 key={item.id}
                 href={item.href}
                 id={item.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                  isActive
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${isActive
                     ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="text-base w-5 text-center">{item.icon}</span>
                 <span className="flex-1">{item.label}</span>
@@ -167,11 +166,10 @@ export default function DashboardLayout({
                     key={item.id}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
-                      isActive
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${isActive
                         ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
-                    }`}
+                      }`}
                   >
                     <span className="text-lg">{item.icon}</span>
                     {item.label}
@@ -209,11 +207,17 @@ export default function DashboardLayout({
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {/* Subscription badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-              <span className="text-xs font-medium text-teal-700 dark:text-teal-400">Pro Plan</span>
-            </div>
+            {/* Subscription badge - shows user's actual plan */}
+            {user && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+                <span className="text-xs font-medium text-teal-700 dark:text-teal-400">
+                  {user.subscription?.status === 'TRIAL'
+                    ? `${user.subscription?.planDisplayName || user.plan || 'Basic'} Trial`
+                    : `${user.subscription?.planDisplayName || user.plan || 'Basic'} Plan`}
+                </span>
+              </div>
+            )}
 
             {/* Notifications */}
             <button className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-all">
@@ -244,11 +248,10 @@ export default function DashboardLayout({
                 key={item.id}
                 href={item.href}
                 id={item.id}
-                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[56px] ${
-                  isActive
+                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[56px] ${isActive
                     ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                }`}
+                  }`}
               >
                 <span className="text-xl leading-none">{item.icon}</span>
                 <span className="text-xs font-medium">{item.label}</span>

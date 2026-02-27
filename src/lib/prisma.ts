@@ -1,28 +1,21 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
-import { Pool } from '@neondatabase/serverless'
 
-// ─── Singleton Pattern for Next.js ────────────────────────────────────────────
-// Prevents multiple PrismaClient instances during hot-reload in development
-
+// Singleton for Next.js hot-reload safety
 declare global {
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined
 }
 
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL
-
-  if (!connectionString) {
-    throw new Error(
-      '❌ DATABASE_URL is not set. Please add it to your .env file.\n' +
-      'Get it from: https://console.neon.tech → Your Project → Connection Details'
-    )
+  if (!process.env.DATABASE_URL) {
+    throw new Error('❌ DATABASE_URL environment variable is not set')
   }
 
-  // Use Neon serverless adapter (works on Vercel Edge + Serverless functions)
-  const pool = new Pool({ connectionString })
-  const adapter = new PrismaNeon(pool)
+  // Neon serverless adapter — uses pooled DATABASE_URL at runtime
+  const adapter = new PrismaNeon({
+    connectionString: process.env.DATABASE_URL,
+  })
 
   return new PrismaClient({
     adapter,
@@ -30,7 +23,6 @@ function createPrismaClient(): PrismaClient {
   })
 }
 
-// Singleton: reuse client across requests in development
 export const prisma = global.prisma ?? createPrismaClient()
 
 if (process.env.NODE_ENV !== 'production') {

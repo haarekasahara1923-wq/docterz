@@ -56,6 +56,7 @@ export default function LandingPage() {
   const plans = [
     {
       name: 'Basic',
+      planKey: 'BASIC',
       price: '₹999',
       period: '/month',
       desc: 'Perfect for solo practitioners',
@@ -67,11 +68,13 @@ export default function LandingPage() {
         'Email support',
       ],
       cta: 'Start Free Trial',
+      ctaLink: '/auth/register?plan=BASIC',
       popular: false,
       color: 'from-slate-600 to-slate-700',
     },
     {
       name: 'Pro',
+      planKey: 'PRO',
       price: '₹2,499',
       period: '/month',
       desc: 'For growing clinics',
@@ -85,11 +88,13 @@ export default function LandingPage() {
         'Priority support',
       ],
       cta: 'Start Free Trial',
+      ctaLink: '/auth/register?plan=PRO',
       popular: true,
       color: 'from-teal-500 to-emerald-600',
     },
     {
       name: 'Enterprise',
+      planKey: 'ENTERPRISE',
       price: '₹5,999',
       period: '/month',
       desc: 'Multi-doctor clinics & hospitals',
@@ -103,6 +108,7 @@ export default function LandingPage() {
         'SLA guarantee',
       ],
       cta: 'Contact Sales',
+      ctaLink: '/auth/register?plan=ENTERPRISE',
       popular: false,
       color: 'from-violet-600 to-purple-700',
     },
@@ -220,7 +226,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            From AI prescriptions to lab commission tracking — Docterz automates everything 
+            From AI prescriptions to lab commission tracking — Docterz automates everything
             so you can focus on what matters most: <strong className="text-white">healing patients.</strong>
           </p>
 
@@ -424,7 +430,7 @@ export default function LandingPage() {
                 <br />Works for Every Doctor.
               </h2>
               <p className="text-slate-400 mb-8">
-                From a single-room clinic in Lucknow to a multi-specialty center in Mumbai — 
+                From a single-room clinic in Lucknow to a multi-specialty center in Mumbai —
                 Docterz adapts to how Indian doctors actually work.
               </p>
               <div className="grid grid-cols-2 gap-4">
@@ -476,11 +482,10 @@ export default function LandingPage() {
           {plans.map((plan, i) => (
             <div
               key={i}
-              className={`relative rounded-2xl p-8 border transition-all duration-300 ${
-                plan.popular
+              className={`relative rounded-2xl p-8 border transition-all duration-300 ${plan.popular
                   ? 'border-teal-500/50 bg-gradient-to-b from-teal-900/30 to-emerald-900/20 scale-105'
                   : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
-              }`}
+                }`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -511,12 +516,11 @@ export default function LandingPage() {
               </ul>
 
               <Link
-                href="/auth/register"
-                className={`w-full block text-center py-3 rounded-xl font-semibold transition-all ${
-                  plan.popular
+                href={(plan as any).ctaLink || '/auth/register'}
+                className={`w-full block text-center py-3 rounded-xl font-semibold transition-all ${plan.popular
                     ? 'btn-primary'
                     : 'border border-white/20 text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 {plan.cta}
               </Link>
