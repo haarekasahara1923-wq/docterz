@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaNeon } from '@prisma/adapter-neon'
 
 // Singleton for Next.js hot-reload safety
 declare global {
@@ -9,18 +8,25 @@ declare global {
 
 function createPrismaClient(): PrismaClient {
   if (!process.env.DATABASE_URL) {
-    throw new Error('❌ DATABASE_URL environment variable is not set')
+    throw new Error('❌ DATABASE_URL environment variable is not set. Add it to .env.local')
   }
 
-  // Neon serverless adapter — uses pooled DATABASE_URL at runtime
-  const adapter = new PrismaNeon({
-    connectionString: process.env.DATABASE_URL,
-  })
-
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  })
+  // Use Neon serverless adapter if available, otherwise basic Prisma
+  try {
+    const { PrismaNeon } = require('@prisma/adapter-neon')
+    const adapter = new PrismaNeon({
+      connectionString: process.env.DATABASE_URL,
+    })
+    return new PrismaClient({
+      adapter,
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    })
+  } catch {
+    // Fallback: standard Prisma (no Neon adapter)
+    return new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    })
+  }
 }
 
 export const prisma = global.prisma ?? createPrismaClient()

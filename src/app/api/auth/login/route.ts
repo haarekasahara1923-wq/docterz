@@ -31,8 +31,7 @@ const builtInUsers = [
     },
 ]
 
-// In-memory user store (persists during server session)
-// In production: replace with Prisma database lookup
+// Global in-memory fallback store (only used when DATABASE_URL is missing)
 declare global {
     var registeredUsers: Array<{
         id: string
@@ -40,14 +39,13 @@ declare global {
         passwordHash: string
         name: string
         role: 'CLINIC_ADMIN' | 'SUPER_ADMIN' | 'STAFF'
-        tenantId: string
+        tenantId: string | null
         clinicName: string
         plan: string
         isActive: boolean
     }>
 }
 
-// Initialize global store if not exists
 if (!global.registeredUsers) {
     global.registeredUsers = []
 }
@@ -65,18 +63,65 @@ export async function POST(request: NextRequest) {
         }
 
         const emailLower = email.toLowerCase().trim()
+        const isBuiltIn = builtInUsers.some(u => u.email === emailLower)
 
-        // First check built-in users
+        // ─── 1. Check built-in demo users ────────────────────────────────────
         let user: any = builtInUsers.find(u => u.email === emailLower)
 
-        // Then check dynamically registered users
+        // ─── 2. Try Prisma DB lookup ─────────────────────────────────────────
+        if (!user && process.env.DATABASE_URL) {
+            try {
+                const { prisma } = await import('@/lib/prisma')
+
+                const dbUser = await prisma.user.findUnique({
+                    where: { email: emailLower },
+                    include: {
+                        tenant: {
+                            include: {
+                                subscriptions: {
+                                    orderBy: { createdAt: 'desc' },
+                                    take: 1,
+                                },
+                            },
+                        },
+                    },
+                })
+
+                if (dbUser) {
+                    user = {
+                        id: dbUser.id,
+                        email: dbUser.email,
+                        passwordHash: dbUser.passwordHash,
+                        name: dbUser.name,
+                        role: dbUser.role,
+                        tenantId: dbUser.tenantId,
+                        clinicName: dbUser.tenant?.clinicName || '',
+                        plan: dbUser.tenant?.subscriptions?.[0]?.plan || 'BASIC',
+                        isActive: dbUser.isActive,
+                        _fromDb: true,
+                        _subscription: dbUser.tenant?.subscriptions?.[0] || null,
+                    }
+
+                    // Update last login time
+                    await prisma.user.update({
+                        where: { id: dbUser.id },
+                        data: { lastLoginAt: new Date() },
+                    })
+                }
+            } catch (dbError) {
+                console.error('❌ DB lookup error during login:', dbError)
+                // Fall through to in-memory check
+            }
+        }
+
+        // ─── 3. Fallback: in-memory store ─────────────────────────────────────
         if (!user) {
             user = global.registeredUsers.find(u => u.email === emailLower)
         }
 
         if (!user) {
             return NextResponse.json(
-                { message: 'Invalid email or password. If you just registered, please note that you need to use the same email and password you signed up with.' },
+                { message: 'Invalid email or password. If you just registered, please try again.' },
                 { status: 401 }
             )
         }
@@ -88,13 +133,11 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Verify password
-        // For built-in demo users: accept any password >= 4 chars (for easy testing)
-        // For registered users: validate against stored hash
+        // ─── Password verification ─────────────────────────────────────────────
         let isValid = false
-        const isBuiltIn = builtInUsers.some(u => u.email === emailLower)
 
         if (isBuiltIn) {
+            // Demo users: accept any password >= 4 chars
             isValid = password.length >= 4
         } else {
             isValid = await bcrypt.compare(password, user.passwordHash)
@@ -107,7 +150,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Generate tokens
+        // ─── Generate tokens ───────────────────────────────────────────────────
         const payload = {
             userId: user.id,
             email: user.email,
@@ -118,9 +161,25 @@ export async function POST(request: NextRequest) {
         const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' })
         const refreshToken = jwt.sign(payload, JWT_SECRET + '-refresh', { expiresIn: '7d' })
 
-        // Prepare trial info
-        const trialEndDate = new Date()
-        trialEndDate.setDate(trialEndDate.getDate() + 7)
+        // ─── Build subscription info ───────────────────────────────────────────
+        const sub = user._subscription
+        let trialEndsAt: string
+        let daysLeft: number
+        let subStatus = 'TRIAL'
+        let plan = user.plan || 'BASIC'
+
+        if (sub) {
+            trialEndsAt = sub.trialEndsAt?.toISOString() || sub.endDate?.toISOString() || ''
+            subStatus = sub.status
+            plan = sub.plan
+            const end = sub.trialEndsAt ? new Date(sub.trialEndsAt) : new Date(sub.endDate)
+            daysLeft = Math.max(0, Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        } else {
+            const fallback = new Date()
+            fallback.setDate(fallback.getDate() + 7)
+            trialEndsAt = fallback.toISOString()
+            daysLeft = 7
+        }
 
         const response = NextResponse.json({
             accessToken,
@@ -131,13 +190,13 @@ export async function POST(request: NextRequest) {
                 role: user.role,
                 tenantId: user.tenantId,
                 clinicName: user.clinicName,
-                plan: user.plan || 'BASIC',
+                plan,
                 subscription: {
-                    status: 'TRIAL',
-                    plan: user.plan || 'BASIC',
-                    trialEndsAt: trialEndDate.toISOString(),
-                    daysLeft: 7,
-                }
+                    status: subStatus,
+                    plan,
+                    trialEndsAt,
+                    daysLeft,
+                },
             },
         })
 
@@ -145,7 +204,7 @@ export async function POST(request: NextRequest) {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60, // 7 days
+            maxAge: 7 * 24 * 60 * 60,
         })
 
         return response
