@@ -1,6 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -35,6 +41,90 @@ export default function SettingsPage() {
         await new Promise(r => setTimeout(r, 1000))
         setSaved(false)
     }
+
+    useEffect(() => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
+        };
+    }, []);
+
+    const [isProcessingUpgrade, setIsProcessingUpgrade] = useState(false);
+
+    const handleUpgrade = async (plan: string, amount: number) => {
+        try {
+            setIsProcessingUpgrade(true);
+            const userStr = localStorage.getItem('user');
+            const tenantId = userStr ? JSON.parse(userStr).tenantId : '';
+
+            // 1. Create Order
+            const orderRes = await fetch('/api/razorpay/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan, amount, tenantId })
+            });
+            const { order } = await orderRes.json();
+
+            // 2. Open Razorpay Checkout
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_RsbFKZwt1ZtSQF',
+                amount: order.amount,
+                currency: order.currency,
+                name: 'Docterz SaaS',
+                description: `Upgrade to ${plan}`,
+                order_id: order.id,
+                handler: async function (response: any) {
+                    try {
+                        const verifyRes = await fetch('/api/razorpay/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                                tenantId,
+                                plan,
+                                amount
+                            })
+                        });
+
+                        const verifyData = await verifyRes.json();
+                        if (verifyRes.ok) {
+                            alert(`Successfully upgraded to ${plan}!`);
+                            // Refresh logic here if need to fetch subscriptions again
+                        } else {
+                            alert(verifyData.error || 'Payment verification failed!');
+                        }
+                    } catch (err) {
+                        alert('Error verifying payment.');
+                    }
+                },
+                prefill: {
+                    name: userStr ? JSON.parse(userStr).name : 'Doctor',
+                    email: userStr ? JSON.parse(userStr).email : 'doctor@example.com',
+                },
+                theme: { color: "#0d9488" }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                alert(`Payment failed: ${response.error.description}`);
+            });
+            rzp.open();
+
+        } catch (error) {
+            console.error('Upgrade Error:', error);
+            alert('Failed to initiate upgrade');
+        } finally {
+            setIsProcessingUpgrade(false);
+        }
+    };
 
     return (
         <div className="p-4 sm:p-6 pb-24 lg:pb-6 max-w-3xl">
@@ -187,8 +277,8 @@ export default function SettingsPage() {
                             <div className="h-full bg-teal-500 rounded-full" style={{ width: '93%' }} />
                         </div>
                         <div className="flex gap-2">
-                            <button className="btn-primary flex-1 py-2.5 rounded-xl text-sm font-semibold">
-                                🔄 Renew Plan
+                            <button onClick={() => handleUpgrade('PRO', 2499)} disabled={isProcessingUpgrade} className="btn-primary flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
+                                🔄 {isProcessingUpgrade ? 'Processing...' : 'Renew Plan'}
                             </button>
                             <button className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-50 dark:hover:bg-white/5">
                                 📊 Usage
@@ -211,8 +301,8 @@ export default function SettingsPage() {
                                 <div key={i} className="text-sm text-slate-700 dark:text-slate-300">{f}</div>
                             ))}
                         </div>
-                        <button className="mt-4 w-full py-2.5 rounded-xl border border-teal-200 dark:border-teal-500/30 text-teal-700 dark:text-teal-400 text-sm font-medium hover:bg-teal-50 dark:hover:bg-teal-500/10 transition-all">
-                            ⬆️ Upgrade to Enterprise
+                        <button onClick={() => handleUpgrade('ENTERPRISE', 4999)} disabled={isProcessingUpgrade} className="mt-4 w-full py-2.5 rounded-xl border border-teal-200 dark:border-teal-500/30 text-teal-700 dark:text-teal-400 text-sm font-medium hover:bg-teal-50 dark:hover:bg-teal-500/10 transition-all disabled:opacity-50">
+                            ⬆️ {isProcessingUpgrade ? 'Processing...' : 'Upgrade to Enterprise (₹4,999/mo)'}
                         </button>
                     </div>
                 </div>

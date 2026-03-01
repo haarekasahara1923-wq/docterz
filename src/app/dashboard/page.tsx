@@ -90,7 +90,11 @@ export default function DashboardPage() {
               {currentTime.toLocaleTimeString('en-IN')} · OPD Active
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <Link href="/dashboard/settings"
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-400/90 hover:bg-yellow-400 text-yellow-950 text-sm font-bold rounded-xl transition-all shadow-sm">
+              🚀 Upgrade Plan
+            </Link>
             <Link href="/dashboard/appointments?new=1"
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-xl transition-all border border-white/20">
               + New Appointment
@@ -188,20 +192,18 @@ export default function DashboardPage() {
           <div className="divide-y divide-slate-100 dark:divide-white/5">
             {mockQueue.map((patient, i) => (
               <div key={patient.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
-                <div className={`w-9 h-9 rounded-xl text-sm font-bold flex items-center justify-center flex-shrink-0 ${
-                  i === 0 ? 'bg-teal-500 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400'
-                }`}>
+                <div className={`w-9 h-9 rounded-xl text-sm font-bold flex items-center justify-center flex-shrink-0 ${i === 0 ? 'bg-teal-500 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400'
+                  }`}>
                   {patient.token}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-slate-800 dark:text-white truncate">{patient.name}</div>
                   <div className="text-xs text-slate-400">{patient.age}y · {patient.time}</div>
                 </div>
-                <div className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${
-                  i === 0
+                <div className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${i === 0
                     ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400'
                     : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400'
-                }`}>
+                  }`}>
                   {patient.status}
                 </div>
               </div>
@@ -232,9 +234,8 @@ export default function DashboardPage() {
               {revenueData.map((d, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div
-                    className={`w-full rounded-t-lg transition-all ${
-                      i === revenueData.length - 3 ? 'bg-teal-500' : 'bg-slate-100 dark:bg-white/5'
-                    }`}
+                    className={`w-full rounded-t-lg transition-all ${i === revenueData.length - 3 ? 'bg-teal-500' : 'bg-slate-100 dark:bg-white/5'
+                      }`}
                     style={{ height: `${(d.amount / maxRevenue) * 100}%` }}
                   />
                   <span className="text-xs text-slate-400">{d.day}</span>
