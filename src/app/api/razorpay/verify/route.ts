@@ -1,14 +1,21 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
+import Razorpay from 'razorpay'; // Added import for Razorpay
 
 export async function POST(req: Request) {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, tenantId, plan, amount } = await req.json();
 
+        // Initialize Razorpay instance (as per instruction)
+        const razorpay = new Razorpay({
+            key_id: (process.env.RAZORPAY_KEY_ID || 'rzp_live_RsbFKZwt1ZtSQF').replace(/"/g, ''),
+            key_secret: (process.env.RAZORPAY_KEY_SECRET || '5ERk59shUraQto1EJ51we7aK').replace(/"/g, ''),
+        });
+
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSign = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+            .createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || '5ERk59shUraQto1EJ51we7aK').replace(/"/g, '')) // Modified this line
             .update(sign.toString())
             .digest("hex");
 
