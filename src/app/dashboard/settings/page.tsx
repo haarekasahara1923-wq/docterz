@@ -64,9 +64,13 @@ export default function SettingsPage() {
             const tenantId = userStr ? JSON.parse(userStr).tenantId : '';
 
             // 1. Create Order
+            const token = localStorage.getItem('accessToken');
             const orderRes = await fetch('/api/razorpay/create-order', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ plan, amount, tenantId })
             });
             const orderData = await orderRes.json();
@@ -85,7 +89,10 @@ export default function SettingsPage() {
                     try {
                         const verifyRes = await fetch('/api/razorpay/verify', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
                             body: JSON.stringify({
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_order_id: response.razorpay_order_id,
