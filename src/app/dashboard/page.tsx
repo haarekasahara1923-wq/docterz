@@ -60,6 +60,7 @@ export default function DashboardPage() {
   ])
 
   const [isProcessingUpgrade, setIsProcessingUpgrade] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState('PRO');
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -71,6 +72,9 @@ export default function DashboardPage() {
     if (stored) {
       const user = JSON.parse(stored)
       setUserName(user.name || 'Doctor')
+      if (user.subscription && user.subscription.plan) {
+        setCurrentPlan(user.subscription.plan);
+      }
     }
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -188,10 +192,19 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3">
-            <button onClick={() => handleUpgrade('PRO', 2499)} disabled={isProcessingUpgrade}
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-400/90 hover:bg-yellow-400 text-yellow-950 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-50">
-              🚀 {isProcessingUpgrade ? 'Processing...' : 'Upgrade Plan'}
-            </button>
+            {currentPlan === 'BASIC' && (
+              <button onClick={() => handleUpgrade('BASIC', 999)} disabled={isProcessingUpgrade}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-50">
+                🔁 {isProcessingUpgrade ? 'Processing...' : 'Renew Basic (₹999)'}
+              </button>
+            )}
+
+            {(currentPlan === 'BASIC' || currentPlan === 'PRO') && (
+              <button onClick={() => handleUpgrade(currentPlan === 'PRO' ? 'ENTERPRISE' : 'PRO', currentPlan === 'PRO' ? 4999 : 2499)} disabled={isProcessingUpgrade}
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-400/90 hover:bg-yellow-400 text-yellow-950 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-50">
+                🚀 {isProcessingUpgrade ? 'Processing...' : `Upgrade to ${currentPlan === 'PRO' ? 'Enterprise' : 'Pro'}`}
+              </button>
+            )}
             <Link href="/dashboard/appointments?new=1"
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-xl transition-all border border-white/20">
               + New Appointment
