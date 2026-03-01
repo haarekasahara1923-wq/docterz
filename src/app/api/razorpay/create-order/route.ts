@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { prisma } from '@/lib/prisma';
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID!,
-    key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+
 
 export async function POST(req: Request) {
     try {
@@ -22,11 +19,16 @@ export async function POST(req: Request) {
             receipt: `receipt_${Date.now()}`,
         };
 
+        const razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_RsbFKZwt1ZtSQF',
+            key_secret: process.env.RAZORPAY_KEY_SECRET || '5ERk59shUraQto1EJ51we7aK',
+        });
+
         const order = await razorpay.orders.create(orderOptions);
 
         return NextResponse.json({ order }, { status: 200 });
     } catch (error) {
         console.error('Error creating razorpay order:', error);
-        return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create order' }, { status: 500 });
     }
 }

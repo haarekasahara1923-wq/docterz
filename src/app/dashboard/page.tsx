@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface DashboardStats {
   todayPatients: number
   todayRevenue: number
@@ -53,6 +59,8 @@ export default function DashboardPage() {
     { day: 'Sun', amount: 5600 },
   ])
 
+  const [isProcessingUpgrade, setIsProcessingUpgrade] = useState(false);
+
   useEffect(() => {
     const hour = new Date().getHours()
     if (hour < 12) setGreeting('Good morning')
@@ -66,8 +74,90 @@ export default function DashboardPage() {
     }
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      clearInterval(timer);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, [])
+
+  const handleUpgrade = async (plan: string, amount: number) => {
+    try {
+      setIsProcessingUpgrade(true);
+      const userStr = localStorage.getItem('user');
+      const tenantId = userStr ? JSON.parse(userStr).tenantId : '';
+
+      // 1. Create Order
+      const orderRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, amount, tenantId })
+      });
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok) throw new Error(orderData.error);
+      const { order } = orderData;
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_RsbFKZwt1ZtSQF',
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Docterz SaaS',
+        description: `Upgrade to ${plan}`,
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                tenantId,
+                plan,
+                amount
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok) {
+              alert(`Successfully upgraded to ${plan}!`);
+            } else {
+              alert(verifyData.error || 'Payment verification failed!');
+            }
+          } catch (err) {
+            alert('Error verifying payment.');
+          }
+        },
+        prefill: {
+          name: userStr ? JSON.parse(userStr).name : 'Doctor',
+          email: userStr ? JSON.parse(userStr).email : 'doctor@example.com',
+        },
+        theme: { color: "#0d9488" }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        alert(`Payment failed: ${response.error.description}`);
+      });
+      rzp.open();
+
+    } catch (error: any) {
+      console.error('Upgrade Error:', error);
+      alert(`Failed to initiate upgrade: ${error.message}`);
+    } finally {
+      setIsProcessingUpgrade(false);
+    }
+  };
 
   const maxRevenue = Math.max(...revenueData.map(d => d.amount))
 
@@ -91,10 +181,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3">
-            <Link href="/dashboard/settings"
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-400/90 hover:bg-yellow-400 text-yellow-950 text-sm font-bold rounded-xl transition-all shadow-sm">
-              🚀 Upgrade Plan
-            </Link>
+            <button onClick={() => handleUpgrade('PRO', 2499)} disabled={isProcessingUpgrade}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-400/90 hover:bg-yellow-400 text-yellow-950 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-50">
+              🚀 {isProcessingUpgrade ? 'Processing...' : 'Upgrade Plan'}
+            </button>
             <Link href="/dashboard/appointments?new=1"
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-xl transition-all border border-white/20">
               + New Appointment
@@ -201,8 +291,8 @@ export default function DashboardPage() {
                   <div className="text-xs text-slate-400">{patient.age}y · {patient.time}</div>
                 </div>
                 <div className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${i === 0
-                    ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400'
-                    : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400'
+                  ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400'
+                  : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400'
                   }`}>
                   {patient.status}
                 </div>

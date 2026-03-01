@@ -69,7 +69,9 @@ export default function SettingsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ plan, amount, tenantId })
             });
-            const { order } = await orderRes.json();
+            const orderData = await orderRes.json();
+            if (!orderRes.ok) throw new Error(orderData.error || 'Failed to fetch order');
+            const { order } = orderData;
 
             // 2. Open Razorpay Checkout
             const options = {
@@ -118,9 +120,9 @@ export default function SettingsPage() {
             });
             rzp.open();
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upgrade Error:', error);
-            alert('Failed to initiate upgrade');
+            alert(`Failed to initiate upgrade: ${error?.message || 'Unknown error'}`);
         } finally {
             setIsProcessingUpgrade(false);
         }
