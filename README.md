@@ -298,3 +298,5 @@ vercel --prod
 ---
 
 *Built with ❤️ for Indian doctors. Powered by Next.js 14 + TypeScript + Tailwind CSS + Prisma + PostgreSQL*
+
+<!-- Trigger deployment for SMTP update -->
