@@ -205,6 +205,10 @@ export default function DashboardPage() {
                 🚀 {isProcessingUpgrade ? 'Processing...' : `Upgrade to ${currentPlan === 'PRO' ? 'Enterprise' : 'Pro'}`}
               </button>
             )}
+            <Link href="https://wapiflow.site" target="_blank"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95 border border-white/20">
+              🌐 Your Website ✨
+            </Link>
             <Link href="/dashboard/appointments?new=1"
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-xl transition-all border border-white/20">
               + New Appointment

@@ -149,6 +149,23 @@ export default function DashboardLayout({
             )
           })}
         </nav>
+        
+        {/* Your Website CTA */}
+        <div className="px-3 mb-2">
+          <Link 
+            href="https://wapiflow.site" 
+            target="_blank"
+            className="group relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all hover:-translate-y-0.5"
+          >
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+            <span className="text-xl">🌐</span>
+            <div className="flex flex-col">
+              <span className="leading-none">Your Website</span>
+              <span className="text-[10px] font-medium opacity-80 mt-1">Build in 1-min ✨</span>
+            </div>
+            <span className="ml-auto text-xs opacity-50 group-hover:translate-x-1 transition-transform">→</span>
+          </Link>
+        </div>
 
         {/* Bottom Actions */}
         <div className="px-3 py-3 border-t border-slate-100 dark:border-white/5 space-y-1">
@@ -218,6 +235,23 @@ export default function DashboardLayout({
                 )
               })}
             </nav>
+            
+            {/* Mobile Your Website CTA */}
+            <div className="px-3 mb-6">
+              <Link 
+                href="https://wapiflow.site" 
+                target="_blank"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 px-4 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 animate-pulse-subtle"
+              >
+                <span className="text-xl">🌐</span>
+                <div className="flex flex-col">
+                  <span>Your Website</span>
+                  <span className="text-xs font-medium opacity-80">Build your mini website ✨</span>
+                </div>
+                <span className="ml-auto">→</span>
+              </Link>
+            </div>
             <div className="px-3 py-3 border-t border-slate-100 dark:border-white/5">
               <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-500">
                 🚪 Logout
@@ -250,13 +284,22 @@ export default function DashboardLayout({
           <div className="flex items-center gap-2">
             {/* Subscription badge - shows user's actual plan */}
             {user && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                <span className="text-xs font-medium text-teal-700 dark:text-teal-400">
-                  {user.subscription?.status === 'TRIAL'
-                    ? `${user.subscription?.planDisplayName || user.plan || 'Basic'} Trial`
-                    : `${user.subscription?.planDisplayName || user.plan || 'Basic'} Plan`}
-                </span>
+              <div className="hidden sm:flex items-center gap-3">
+                <Link 
+                  href="https://wapiflow.site" 
+                  target="_blank"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-full transition-all shadow-md hover:shadow-indigo-500/30 animate-pulse-subtle"
+                >
+                  🌐 Your Website
+                </Link>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                  <span className="text-xs font-medium text-teal-700 dark:text-teal-400">
+                    {user.subscription?.status === 'TRIAL'
+                      ? `${user.subscription?.planDisplayName || user.plan || 'Basic'} Trial`
+                      : `${user.subscription?.planDisplayName || user.plan || 'Basic'} Plan`}
+                  </span>
+                </div>
               </div>
             )}
 
